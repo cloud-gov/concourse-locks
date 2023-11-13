@@ -1,0 +1,88 @@
+jobs:
+  - name: job1
+    plan:
+      - get: general-task
+      - put: stemcell-lock-pool
+        params:
+          claim: updating-stemcells
+      - task: wait-10
+        image: general-task
+        config:
+          platform: linux
+          run:
+            path: sleep
+            args: ["10"]
+        ensure: # always release the lock, regardless of success or failure
+          put: stemcell-lock-pool
+          params:
+            release: stemcell-lock-pool # name of the step where the lock was claimed
+
+  - name: job2
+    plan:
+      - get: general-task
+      - put: stemcell-lock-pool
+        params:
+          claim: updating-stemcells
+      - task: wait-10
+        image: general-task
+        config:
+          platform: linux
+          run:
+            path: sleep
+            args: ["10"]
+        ensure:
+          put: stemcell-lock-pool
+          params:
+            release: stemcell-lock-pool
+
+  - name: job3
+    plan:
+      - get: general-task
+      - put: stemcell-lock-pool
+        params:
+          claim: updating-stemcells
+      - task: wait-10
+        image: general-task
+        config:
+          platform: linux
+          run:
+            path: sleep
+            args: ["10"]
+        ensure:
+          put: stemcell-lock-pool
+          params:
+            release: stemcell-lock-pool
+
+resources:
+  - name: stemcell-lock-pool
+    type: pool
+    source:
+      uri: git@github.com:cloud-gov/concourse-locks.git
+      branch: concourse # main is protected, so use a topic branch
+      pool: stemcell
+      username: cg-ci-bot
+      private_key: ((cg-ci-bot-sshkey.private_key))
+      git_config:
+        - name: "user.name"
+          value: "cg-ci-bot"
+        - name: "user.email"
+          value: "no-reply@cloud.gov"
+
+  - name: general-task
+    type: registry-image
+    source:
+      aws_access_key_id: ((ecr_aws_key))
+      aws_secret_access_key: ((ecr_aws_secret))
+      repository: general-task
+      aws_region: us-gov-west-1
+      tag: latest
+
+resource_types:
+  - name: registry-image
+    type: registry-image
+    source:
+      aws_access_key_id: ((ecr_aws_key))
+      aws_secret_access_key: ((ecr_aws_secret))
+      repository: registry-image-resource
+      aws_region: us-gov-west-1
+      tag: latest
